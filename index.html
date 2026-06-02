@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sistema de Baixas - Votorantim</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { 
+            --primary: #185FA5; 
+            --primary-hover: #124b85;
+            --bg: #f4f7f9; 
+            --text: #333;
+            --border: #e1e8ed;
+        }
+        
+        body { 
+            font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; 
+            background: var(--bg); 
+            padding: 15px 10px; 
+            color: var(--text); 
+            margin: 0; 
+        }
+
+        .container { 
+            width: 100%; 
+            max-width: 900px; 
+            margin: auto; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+            box-sizing: border-box; 
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary);
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        /* Botões Gerais */
+        .btn { 
+            padding: 14px; 
+            width: 100%; 
+            border-radius: 8px; 
+            border: none; 
+            cursor: pointer; 
+            color: white; 
+            font-weight: 600; 
+            background: var(--primary); 
+            margin: 10px 0; 
+            font-size: 16px; 
+            transition: background 0.3s ease;
+        }
+        .btn:hover { background: var(--primary-hover); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .btn-sync { background: #17a2b8; margin-bottom: 20px; }
+        .btn-sync:hover { background: #138496; }
+
+        /* Abas */
+        .tabs { 
+            display: flex; 
+            gap: 10px; 
+            margin: 20px 0; 
+        }
+        .tab-btn { 
+            padding: 12px; 
+            flex: 1; 
+            cursor: pointer; 
+            border: none; 
+            background: #e9ecef; 
+            color: #495057;
+            border-radius: 8px; 
+            font-weight: bold; 
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+        .tab-btn.active { 
+            background: var(--primary); 
+            color: white; 
+            box-shadow: 0 2px 5px rgba(24, 95, 165, 0.3);
+        }
+
+        /* Tabela */
+        .table-responsive { 
+            width: 100%; 
+            overflow-x: auto; 
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 14px; 
+        }
+        thead { background: #f8f9fa; }
+        th { 
+            padding: 14px 12px; 
+            text-align: left; 
+            color: #495057;
+            border-bottom: 2px solid var(--border);
+        }
+        th:last-child { text-align: center; } 
+        td { 
+            padding: 14px 12px; 
+            border-bottom: 1px solid var(--border); 
+            vertical-align: middle;
+        }
+        td:last-child { text-align: center; } 
+        tr:nth-child(even) { background-color: #fdfdfd; }
+        
+        .clickable { 
+            color: var(--primary); 
+            font-weight: 600; 
+            cursor: pointer; 
+            text-decoration: none;
+            display: inline-block;
+        }
+        .clickable:hover { text-decoration: underline; }
+
+        /* Botões de Ação de Contato (WhatsApp e Ligação) */
+        .contato-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .contato-buttons {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+        .btn-acao {
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            text-decoration: none;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: transform 0.1s ease, opacity 0.2s;
+        }
+        .btn-acao:active { transform: scale(0.95); }
+        .btn-whatsapp { background-color: #25D366; }
+        .btn-ligar { background-color: #007bff; }
+
+        /* Modal / Overlay */
+        #detalhesOverlay { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.6); 
+            backdrop-filter: blur(3px);
+            z-index: 1000; 
+            overflow-y: auto; 
+        }
+        .modal-box { 
+            background: white; 
+            width: 92%; 
+            max-width: 500px; 
+            margin: 30px auto; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-sizing: border-box; 
+            box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+        }
+        .modal-box h2 { text-align: left; margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        
+        /* Informações do Cliente no Modal */
+        #modalInfo p { margin: 8px 0; font-size: 14.5px; line-height: 1.4; }
+        #modalInfo a { color: var(--primary); text-decoration: none; font-weight: 500;}
+        #modalInfo a:hover { text-decoration: underline; }
+
+        /* Área de Baixa (Inputs e Câmera) */
+        #areaBaixa { margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ccc; }
+        #areaBaixa p { font-weight: 600; margin-bottom: 10px; }
+        
+        input[type="text"] { 
+            width: 100%; 
+            padding: 14px; 
+            margin-bottom: 15px; 
+            border: 1px solid #ced4da; 
+            border-radius: 8px; 
+            box-sizing: border-box; 
+            font-size: 15px;
+            background: #f8f9fa;
+        }
+        input[type="text"]:focus { outline: none; border-color: var(--primary); background: white; }
+        
+        input[type="file"] { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 8px; 
+            box-sizing: border-box; 
+            background: white;
+            font-size: 13px;
+        }
+
+        /* Grid para alinhar as fotos lado a lado */
+        .fotos-grid {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .foto-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 15px 10px;
+            border-radius: 8px;
+            border: 1px dashed #adb5bd;
+            text-align: center;
+        }
+        .foto-box span { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: #495057;}
+        .preview-img { 
+            width: 100%; 
+            max-width: 120px; 
+            height: 120px; 
+            object-fit: cover; 
+            border-radius: 8px; 
+            margin-top: 10px; 
+            display: none; 
+            border: 2px solid var(--primary); 
+        }
+
+        /* Menu Admin */
+        .menu-admin { 
+            background: #f8f9fa; 
+            padding: 20px; 
+            border-radius: 12px; 
+            margin-top: 30px; 
+            border: 1px solid #e1e8ed; 
+        }
+        .menu-admin h4 { margin-top: 0; color: #343a40; margin-bottom: 15px; font-size: 16px;}
+        .menu-admin label { font-size: 14px; font-weight: 500; color: #495057; display: block; margin-bottom: 8px;}
+        
+        /* Badges de Status */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .badge-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .badge-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Gestão de Equipamentos</h2>
+    
+    <button class="btn btn-sync" id="btnSync" onclick="sincronizarDados()">🔄 Sincronizar com a Planilha Online</button>
+    
+    <div class="tabs">
+        <button class="tab-btn active" id="tabPendentes" onclick="mudarTab('pendentes')">Pendentes</button>
+        <button class="tab-btn" id="tabBaixados" onclick="mudarTab('baixados')">Baixados</button>
+    </div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Cliente e Status</th>
+                    <th>Bairro</th>
+                    <th>Protocolo / Contato</th>
+                </tr>
+            </thead>
+            <tbody id="corpoTabela"></tbody>
+        </table>
+    </div>
+
+    <div class="menu-admin">
+        <h4>👨‍💻 Área Administrativa</h4>
+        <label>Subir base de clientes nova para a NUVEM (Excel):</label>
+        <input type="file" id="fileInput" accept=".xlsx">
+        <button class="btn" style="background: #6c757d; font-size: 14px; margin-top: 15px;" onclick="exportarExcel()">📥 Fazer Backup Local (Excel)</button>
+    </div>
+</div>
+
+<div id="detalhesOverlay">
+    <div class="modal-box">
+        <h2 id="modalNome"></h2>
+        <div id="modalInfo"></div>
+        
+        <div id="areaBaixa">
+            <input type="text" id="serialInput" placeholder="Digite o Número do Serial">
+            
+            <p>Fotos do Equipamento (Obrigatório):</p>
+            
+            <div class="fotos-grid">
+                <div class="foto-box">
+                    <span>Frente</span>
+                    <input type="file" accept="image/*" capture="environment" id="fotoFrente" onchange="previewFoto(this, 'prevFrente')">
+                    <img id="prevFrente" class="preview-img">
+                </div>
+                
+                <div class="foto-box">
+                    <span>Traseira</span>
+                    <input type="file" accept="image/*" capture="environment" id="fotoTraseira" onchange="previewFoto(this, 'prevTraseira')">
+                    <img id="prevTraseira" class="preview-img">
+                </div>
+            </div>
+
+            <button class="btn" id="btnConfirmar" onclick="salvarBaixa()">✅ Confirmar Baixa Definitiva</button>
+        </div>
+        <button class="btn" style="background:#adb5bd; color: #333;" onclick="fecharModal()">❌ Cancelar / Fechar</button>
+    </div>
+</div>
+
+<script>
+    let dados = JSON.parse(localStorage.getItem('bancoBaixas')) || [];
+    let abaAtual = 'pendentes';
+    let fotos = { frente: '', traseira: '' };
+    
+    const API_URL = 'https://script.google.com/macros/s/AKfycbyBOgIVi-E39-CsdRcXJpOsg8qYtlJZPqD7ij7fOjRuGYRlZrQvCZqsnQlA5gOESApGcA/exec';
+
+    function previewFoto(input, imgId) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800; const MAX_HEIGHT = 800;
+                    let width = img.width; let height = img.height;
+
+                    if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
+                    else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+                    
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+
+                    document.getElementById(imgId).src = dataUrl;
+                    document.getElementById(imgId).style.display = 'inline-block';
+                    
+                    if(imgId === 'prevFrente') fotos.frente = dataUrl;
+                    else fotos.traseira = dataUrl;
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function mudarTab(aba) {
+        abaAtual = aba;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(aba === 'pendentes' ? 'tabPendentes' : 'tabBaixados').classList.add('active');
+        renderizar();
+    }
+
+    function renderizar() {
+        const tbody = document.getElementById('corpoTabela');
+        tbody.innerHTML = '';
+        dados.filter(i => abaAtual === 'pendentes' ? !i.serial : !!i.serial).forEach((item, index) => {
+            const realIndex = dados.indexOf(item);
+            let statusHtml = '';
+            
+            if (item.serial) {
+                if (item.sincronizado === false) {
+                    statusHtml = `<br><span class="badge badge-warning">⚠️ Pendente de Sync</span>`;
+                } else {
+                    statusHtml = `<br><span class="badge badge-success">✅ Salvo</span>`;
+                }
+            }
+
+            // Identifica dinamicamente o campo de telefone do cliente
+            let telefoneRaw = '';
+            for (let key in item) {
+                if (key.toLowerCase().includes('telefone')) {
+                    telefoneRaw = String(item[key]);
+                    break;
+                }
+            }
+
+            // Monta os botões de ação se houver telefone válido
+            let botoesContatoHtml = '';
+            if (telefoneRaw && telefoneRaw.trim() !== "") {
+                let numLimpo = telefoneRaw.replace(/\D/g, ''); // Mantém apenas números
+                if (numLimpo.length === 10 || numLimpo.length === 11) {
+                    numLimpo = '55' + numLimpo; // Adiciona o DDI do Brasil caso não tenha
+                }
+                
+                botoesContatoHtml = `
+                    <div class="contato-buttons">
+                        <a href="https://wa.me/${numLimpo}" target="_blank" class="btn-acao btn-whatsapp">💬 Whats</a>
+                        <a href="tel:${telefoneRaw}" class="btn-acao btn-ligar">📞 Ligar</a>
+                    </div>
+                `;
+            } else {
+                botoesContatoHtml = `<span style="font-size: 12px; color: #adb5bd;">Sem número</span>`;
+            }
+
+            const tr = document.createElement('tr');
+            const nomeCliente = item.Nome || item.Cliente || item['Nome do Cliente'] || 'Sem Nome';
+            const bairroCliente = item.Bairro || item.bairro || '-';
+            const protocoloCliente = item.Protocolo || '-';
+
+            tr.innerHTML = `
+                <td><span class="clickable" onclick="abrirDetalhes(${realIndex})">${nomeCliente}</span>${statusHtml}</td>
+                <td>${bairroCliente}</td>
+                <td>
+                    <div class="contato-container">
+                        <span style="font-size:12px; font-weight: bold; color:#6c757d; margin-bottom: 2px;">${protocoloCliente}</span>
+                        ${botoesContatoHtml}
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function abrirDetalhes(index) {
+        const item = dados[index];
+        window.idxAtual = index;
+        document.getElementById('modalNome').innerText = item.Nome || item.Cliente || 'Cliente';
+        
+        let infoHtml = '';
+        for (let key in item) {
+            if (['Nome', 'Cliente', 'Nome do Cliente', 'serial', 'Serial', 'fotoFrente', 'fotoTraseira', 'sincronizado'].includes(key)) continue;
+            let val = item[key];
+            if (!val) continue;
+            
+            if (key.toLowerCase().includes('endereço') || key.toLowerCase().includes('logradouro')) 
+                infoHtml += `<p><strong>${key}:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(val)}" target="_blank">📍 ${val}</a></p>`;
+            else if (key.toLowerCase().includes('telefone'))
+                infoHtml += `<p><strong>${key}:</strong> <a href="tel:${val}">📞 ${val}</a></p>`;
+            else if (String(val).startsWith('http'))
+                infoHtml += `<p><strong>${key}:</strong> <a href="${val}" target="_blank">Ver Imagem 🔗</a></p>`;
+            else 
+                infoHtml += `<p><strong>${key}:</strong> ${val}</p>`;
+        }
+        
+        document.getElementById('modalInfo').innerHTML = infoHtml;
+        document.getElementById('areaBaixa').style.display = abaAtual === 'pendentes' ? 'block' : 'none';
+        document.getElementById('detalhesOverlay').style.display = 'block';
+    }
+
+    async function salvarBaixa() {
+        const serial = document.getElementById('serialInput').value;
+        if (!serial) return alert("Digite o número do Serial!");
+        if (!fotos.frente) return alert("Tire a foto da parte da frente!");
+        if (!fotos.traseira) return alert("Tire a foto da parte traseira!");
+
+        const item = dados[window.idxAtual];
+        item.serial = serial; item.fotoFrente = fotos.frente; item.fotoTraseira = fotos.traseira; item.sincronizado = false;
+        localStorage.setItem('bancoBaixas', JSON.stringify(dados));
+
+        const payload = { protocolo: item.Protocolo || "", serial: item.serial, fotoFrente: item.fotoFrente, fotoTraseira: item.fotoTraseira };
+        const btnConfirmar = document.getElementById('btnConfirmar');
+        btnConfirmar.innerText = "⏳ Enviando..."; btnConfirmar.disabled = true;
+
+        try {
+            await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
+            item.sincronizado = true; delete item.fotoFrente; delete item.fotoTraseira;
+            localStorage.setItem('bancoBaixas', JSON.stringify(dados));
+            alert("✅ Baixa realizada e salva na planilha!");
+        } catch (e) { 
+            alert("⚠️ Sem internet! A baixa foi salva no aparelho. Sincronize quando tiver sinal."); 
+        } finally {
+            btnConfirmar.innerText = "✅ Confirmar Baixa Definitiva"; btnConfirmar.disabled = false;
+            fecharModal(); renderizar();
+        }
+    }
+
+    async function sincronizarDados() {
+        const btn = document.getElementById('btnSync');
+        btn.innerText = "⏳ Iniciando..."; btn.disabled = true;
+        const pendentes = dados.filter(i => i.serial && i.sincronizado === false);
+        let sucesso = 0; let erro = 0;
+
+        if (pendentes.length > 0) {
+            btn.innerText = `⏳ Enviando ${pendentes.length} pendentes...`;
+            for (let item of pendentes) {
+                const payload = { protocolo: item.Protocolo || "", serial: item.serial, fotoFrente: item.fotoFrente || "", fotoTraseira: item.fotoTraseira || "" };
+                try {
+                    await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
+                    item.sincronizado = true; delete item.fotoFrente; delete item.fotoTraseira; sucesso++;
+                } catch (e) { erro++; }
+            }
+        }
+
+        if (erro === 0) {
+            try {
+                btn.innerText = "⏳ Atualizando Lista...";
+                const response = await fetch(API_URL);
+                const planilhaDados = await response.json();
+
+                if (planilhaDados && !planilhaDados.error) {
+                    dados = planilhaDados.map(row => {
+                        if(row['Serial']) row.serial = row['Serial'];
+                        if(row.serial) row.sincronizado = true;
+                        return row;
+                    });
+                    localStorage.setItem('bancoBaixas', JSON.stringify(dados));
+                    
+                    if (pendentes.length > 0) alert(`✅ Enviado com sucesso! A lista de clientes foi atualizada com a nuvem.`);
+                    else alert("✅ Sua base de dados foi espelhada com a Planilha do Google com sucesso!");
+                }
+            } catch (err) {
+                if (pendentes.length > 0) alert(`⚠️ Dados enviados com sucesso, mas a internet falhou ao puxar a nova lista.`);
+                else alert("⚠️ Sem internet para atualizar a lista. Verifique a conexão.");
+            }
+        } else {
+            alert(`❌ Falha na internet.\nEnviados: ${sucesso}\nFicaram no aparelho: ${erro}`);
+            localStorage.setItem('bancoBaixas', JSON.stringify(dados));
+        }
+
+        renderizar(); btn.innerText = "🔄 Sincronizar com a Planilha Online"; btn.disabled = false;
+    }
+
+    function fecharModal() {
+        document.getElementById('detalhesOverlay').style.display = 'none';
+        document.getElementById('prevFrente').style.display = 'none'; document.getElementById('prevTraseira').style.display = 'none';
+        document.getElementById('serialInput').value = ''; document.getElementById('fotoFrente').value = ''; document.getElementById('fotoTraseira').value = '';
+        fotos = { frente: '', traseira: '' };
+    }
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            const data = new Uint8Array(ev.target.result);
+            const wb = XLSX.read(data, {type: 'array'});
+            const sheetName = wb.SheetNames[0];
+            const novosDados = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {defval: ""});
+            
+            if(confirm(`Você está enviando ${novosDados.length} clientes para o Google Sheets em nuvem.\n\nEssa lista ficará disponível para todos os técnicos que sincronizarem o app. Deseja confirmar?`)) {
+                
+                document.getElementById('fileInput').disabled = true;
+                alert("Upload em andamento. Aguarde a mensagem final (isso pode levar alguns segundos).");
+
+                try {
+                    const payload = { action: "upload_planilha", clientes: novosDados };
+                    await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
+                    
+                    alert("✅ Upload concluído! O sistema fará uma Sincronização automática agora para trazer a lista organizada da nuvem.");
+                    document.getElementById('fileInput').value = ""; 
+                    await sincronizarDados();
+                } catch (err) {
+                    alert("❌ Falha de conexão ao enviar para a nuvem. Tente novamente.");
+                } finally {
+                    document.getElementById('fileInput').disabled = false;
+                }
+            } else {
+                document.getElementById('fileInput').value = ""; 
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function exportarExcel() {
+        XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(), XLSX.utils.json_to_sheet(dados), "Relatorio"), "Backup_Baixas.xlsx");
+    }
+
+    renderizar();
+</script>
+</body>
+</html>
